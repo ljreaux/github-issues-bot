@@ -1,32 +1,49 @@
 import {
-    ActionRowBuilder,
-    ModalBuilder,
-    TextInputBuilder,
-    TextInputStyle,
+  ActionRowBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
 } from "discord.js";
 
-export const getModal = (description: string) => {
-    const modal = new ModalBuilder()
-        .setTitle("Create github issue")
-        .setCustomId("AwesomeForm");
+const modalTypes = [
+  {
+    type: "feature",
+    title: "Create feature request",
+    issueTitle: "Feature Request Title",
+    issueDescription: "Feature Request Description",
+  },
+  {
+    type: "bug",
+    title: "Create bug Report",
+    issueTitle: "Bug Report Title",
+    issueDescription: "Bug Report Description",
+  },
+];
 
-    const issueTitle = new TextInputBuilder()
-        .setStyle(TextInputStyle.Short)
-        .setCustomId("issueTitle")
-        .setLabel("Issue title");
+export const getModal = (type: string, description: string) => {
+  const modalType = modalTypes.find((t) => t.type === type);
 
-    const issueDescription = new TextInputBuilder()
-        .setStyle(TextInputStyle.Paragraph)
-        .setCustomId("issueDescription")
-        .setLabel("Issue description")
-        .setValue(description);
+  const modal = new ModalBuilder()
+    .setTitle(modalType?.title ?? "Create Issue")
+    .setCustomId(modalType?.type === "feature" ? "featureModal" : "bugModal");
 
-    const rows = [issueTitle, issueDescription].map((component) =>
-        new ActionRowBuilder<TextInputBuilder>().addComponents([component])
-    );
+  const issueTitle = new TextInputBuilder()
+    .setStyle(TextInputStyle.Short)
+    .setCustomId("issueTitle")
+    .setLabel(modalType?.issueTitle ?? "Issue Title");
 
-    // Add action rows to form
-    modal.addComponents(rows);
+  const issueDescription = new TextInputBuilder()
+    .setStyle(TextInputStyle.Paragraph)
+    .setCustomId("issueDescription")
+    .setLabel(modalType?.issueDescription ?? "Issue Description")
+    .setValue(description);
 
-    return modal;
+  const rows = [issueTitle, issueDescription].map((component) =>
+    new ActionRowBuilder<TextInputBuilder>().addComponents([component])
+  );
+
+  // Add action rows to form
+  modal.addComponents(rows);
+
+  return modal;
 };

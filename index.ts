@@ -11,64 +11,77 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 app.get("/", (req, res) => {
-    res.send("Github issues bot!");
+  res.send("Github issues bot!");
 });
 
 app.listen(PORT, () => {
-    console.log(`Server is listening on port ${PORT}`);
+  console.log(`Server is listening on port ${PORT}`);
 });
 
 const client = new DiscordJS.Client({
-    intents: ["Guilds", "GuildMessages"],
+  intents: ["Guilds", "GuildMessages"],
 });
 
 client.on("ready", () => {
-    console.log("issue bot ready");
-    const guildId = process.env.GUILD_ID || "";
+  console.log("issue bot ready");
+  const guildId = process.env.GUILD_ID || "";
 
-    const guild = client.guilds.cache.get(guildId);
+  const guild = client.guilds.cache.get(guildId);
 
-    let commands;
+  const commands = guild ? guild.commands : client.application?.commands;
 
-    if (guild) {
-        commands = guild.commands;
-    } else {
-        commands = client.application?.commands;
-    }
+  const newCommands = [
+    {
+      name: "Create bug report",
+      type: 3,
+    },
+    {
+      name: "Create feature request",
+      type: 3,
+    },
+  ];
 
-    commands?.create({
-        name: "Open github issue",
-        type: 3,
-    });
+  newCommands.forEach((com) => {
+    commands?.create(com);
+  });
 });
 
 client.on("interactionCreate", async (interaction) => {
-    if (interaction.isMessageContextMenuCommand()) {
-        const { commandName, targetMessage } = interaction;
-        if (commandName === "Open github issue") {
-            const modal = getModal(targetMessage.content);
-            interaction.showModal(modal);
-        }
-    } else if (interaction.isModalSubmit()) {
-        const { fields } = interaction;
-        const issueTitle = fields.getField("issueTitle").value;
-        const issueDescription = fields.getField("issueDescription").value;
-        const octokit = new Octokit({
-            auth: process.env.GITHUB_ACCESS_TOKEN,
-            baseUrl: "https://api.github.com",
-        });
-
-        octokit.rest.issues
-            .create({
-                owner: process.env.GITHUB_USERNAME || "",
-                repo: process.env.GITHUB_REPOSITORY || "",
-                title: issueTitle,
-                body: issueDescription,
-            })
-            .then((res) => {
-                interaction.reply(`Issue created: ${res.data.html_url}`);
-            });
+  if (interaction.isMessageContextMenuCommand()) {
+    const { commandName, targetMessage } = interaction;
+    if (commandName === "Create bug report") {
+      const modal = getModal("bug", targetMessage.content);
+      interaction.showModal(modal);
+    } else if (commandName === "Create feature request") {
+      const modal = getModal("feature", targetMessage.content);
+      interaction.showModal(modal);
     }
+  } else if (interaction.isModalSubmit()) {
+    const { fields } = interaction;
+    const issueTitle = fields.getField("issueTitle").value;
+    const issueDescription = fields.getField("issueDescription").value;
+
+    const labels = [
+      interaction.customId === "featureModal" ? "enhancement" : "bug",
+    ];
+    console.log(labels);
+    const octokit = new Octokit({
+      auth: process.env.GITHUB_ACCESS_TOKEN,
+      baseUrl: "https://api.github.com",
+    });
+
+    octokit.rest.issues
+      .create({
+        owner: process.env.GITHUB_USERNAME || "",
+        repo: process.env.GITHUB_REPOSITORY || "",
+        title: issueTitle,
+        body: issueDescription,
+        labels,
+      })
+      .then((res) => {
+        interaction.reply(`Issue created: ${res.data.html_url}`);
+      });
+  }
 });
 
 client.login(process.env.BOT_TOKEN);
