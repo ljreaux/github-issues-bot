@@ -1,4 +1,4 @@
-import DiscordJS from "discord.js";
+import { Client } from "discord.js";
 import { Octokit } from "@octokit/rest";
 import { getModal } from "./utils";
 import express from "express";
@@ -16,7 +16,7 @@ app.listen(PORT, () => {
   console.log(`Server is listening on port ${PORT}`);
 });
 
-const client = new DiscordJS.Client({
+const client = new Client({
   intents: ["Guilds", "GuildMessages"],
 });
 
