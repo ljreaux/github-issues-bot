@@ -1,9 +1,7 @@
 import DiscordJS from "discord.js";
-import dotenv from "dotenv";
 import { Octokit } from "@octokit/rest";
 import { getModal } from "./utils";
 import express from "express";
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
