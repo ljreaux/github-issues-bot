@@ -1,5 +1,3 @@
-// index.ts
-
 import {
   Client,
   ActionRowBuilder,
@@ -143,3 +141,26 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 client.login(process.env.BOT_TOKEN);
+
+app.post("/github-webhook", async (req, res) => {
+  const event = req.headers["x-github-event"];
+  const payload = req.body;
+
+  if (event === "issues" && payload.action === "closed") {
+    const body = payload.issue.body || "";
+    const match = body.match(
+      /https:\/\/discord\.com\/channels\/(\d+)\/(\d+)\/(\d+)/
+    );
+
+    if (match) {
+      const [, , channelId, messageId] = match;
+      const channel = await client.channels.fetch(channelId);
+      if (channel?.isTextBased()) {
+        const message = await channel.messages.fetch(messageId);
+        await message.reply(`GitHub issue closed: ${payload.issue.html_url}`);
+      }
+    }
+  }
+
+  res.status(200).send("ok");
+});

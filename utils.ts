@@ -1,5 +1,3 @@
-// utils.ts
-
 import {
   ActionRowBuilder,
   ModalBuilder,
