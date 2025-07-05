@@ -1,3 +1,5 @@
+// utils.ts
+
 import {
   ActionRowBuilder,
   ModalBuilder,
@@ -20,12 +22,12 @@ const modalTypes = [
   },
 ];
 
-export const getModal = (type: string, description: string) => {
+export const getModal = (type: string, description: string, repo: string) => {
   const modalType = modalTypes.find((t) => t.type === type);
 
   const modal = new ModalBuilder()
     .setTitle(modalType?.title ?? "Create Issue")
-    .setCustomId(modalType?.type === "feature" ? "featureModal" : "bugModal");
+    .setCustomId(`${type}Modal:${repo}`); // include repo in customId
 
   const issueTitle = new TextInputBuilder()
     .setStyle(TextInputStyle.Short)
@@ -42,7 +44,6 @@ export const getModal = (type: string, description: string) => {
     new ActionRowBuilder<TextInputBuilder>().addComponents([component])
   );
 
-  // Add action rows to form
   modal.addComponents(rows);
 
   return modal;

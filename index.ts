@@ -1,4 +1,12 @@
-import { Client } from "discord.js";
+// index.ts
+
+import {
+  Client,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuInteraction,
+  ModalSubmitInteraction,
+} from "discord.js";
 import { Octokit } from "@octokit/rest";
 import { getModal } from "./utils";
 import express from "express";
@@ -20,12 +28,18 @@ const client = new Client({
   intents: ["Guilds", "GuildMessages"],
 });
 
+const REPO_OPTIONS = [
+  { label: "MeadTools", value: "meadtools" },
+  { label: "Taplist", value: "meadtools-taplist" },
+  { label: "Desktop", value: "meadtools-desktop" },
+];
+
+const contextCache = new Map<string, string>();
+
 client.on("ready", () => {
   console.log("issue bot ready");
   const guildId = process.env.GUILD_ID || "";
-
   const guild = client.guilds.cache.get(guildId);
-
   const commands = guild ? guild.commands : client.application?.commands;
 
   const newCommands = [
@@ -47,38 +61,84 @@ client.on("ready", () => {
 client.on("interactionCreate", async (interaction) => {
   if (interaction.isMessageContextMenuCommand()) {
     const { commandName, targetMessage } = interaction;
-    if (commandName === "Create bug report") {
-      const modal = getModal("bug", targetMessage.content);
-      interaction.showModal(modal);
-    } else if (commandName === "Create feature request") {
-      const modal = getModal("feature", targetMessage.content);
-      interaction.showModal(modal);
-    }
-  } else if (interaction.isModalSubmit()) {
-    const { fields } = interaction;
-    const issueTitle = fields.getField("issueTitle").value;
-    const issueDescription = fields.getField("issueDescription").value;
+    const messageLink = `https://discord.com/channels/${interaction.guildId}/${targetMessage.channelId}/${targetMessage.id}`;
+    let content = targetMessage.content ? `> ${targetMessage.content}` : "";
+    const attachmentUrls: string[] = [];
 
-    const labels = [
-      interaction.customId === "featureModal" ? "enhancement" : "bug",
-    ];
-    console.log(labels);
+    for (const attachment of targetMessage.attachments.values()) {
+      const type = attachment.contentType ?? "";
+
+      if (type.startsWith("image/")) {
+        attachmentUrls.push(
+          `\n![${attachment.description || "image"}](${attachment.url})`
+        );
+      } else if (type.startsWith("video/")) {
+        attachmentUrls.push(
+          `\n[📹 ${attachment.description || "Watch video"}](${attachment.url})`
+        );
+      } else {
+        attachmentUrls.push(
+          `\n[📎 ${attachment.description || "Download file"}](${attachment.url})`
+        );
+      }
+    }
+
+    content += `\n\n${attachmentUrls.join("")}\n\n[Original Message](${messageLink})`;
+
+    const type = commandName.includes("feature") ? "feature" : "bug";
+    contextCache.set(interaction.id, JSON.stringify({ type, content }));
+
+    const select = new StringSelectMenuBuilder()
+      .setCustomId(`select_repo:${interaction.id}`)
+      .setPlaceholder("Choose a repository")
+      .addOptions(REPO_OPTIONS);
+
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      select
+    );
+
+    await interaction.reply({
+      content: "Select a repository for this issue:",
+      components: [row],
+      ephemeral: true,
+    });
+  } else if (interaction.isStringSelectMenu()) {
+    const [_, contextId] = interaction.customId.split(":");
+    const selectedRepo = interaction.values[0];
+
+    const stored = contextCache.get(contextId);
+    if (!stored) {
+      return interaction.reply({
+        content: "Context expired or missing.",
+        ephemeral: true,
+      });
+    }
+
+    const { type, content } = JSON.parse(stored);
+
+    const modal = getModal(type, content, selectedRepo);
+    await interaction.showModal(modal);
+  } else if (interaction.isModalSubmit()) {
+    const [customType, repo] = interaction.customId.split(":");
+    const issueTitle = interaction.fields.getField("issueTitle").value;
+    const issueDescription =
+      interaction.fields.getField("issueDescription").value;
+    const labels = [customType === "featureModal" ? "enhancement" : "bug"];
+
     const octokit = new Octokit({
       auth: process.env.GITHUB_ACCESS_TOKEN,
       baseUrl: "https://api.github.com",
     });
 
-    octokit.rest.issues
-      .create({
-        owner: process.env.GITHUB_USERNAME || "",
-        repo: process.env.GITHUB_REPOSITORY || "",
-        title: issueTitle,
-        body: issueDescription,
-        labels,
-      })
-      .then((res) => {
-        interaction.reply(`Issue created: ${res.data.html_url}`);
-      });
+    const result = await octokit.rest.issues.create({
+      owner: process.env.GITHUB_USERNAME || "",
+      repo,
+      title: issueTitle,
+      body: issueDescription,
+      labels,
+    });
+
+    await interaction.reply(`Issue created: ${result.data.html_url}`);
   }
 });
 
