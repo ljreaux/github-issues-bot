@@ -1,13 +1,8 @@
-import {
-  Client,
-  ActionRowBuilder,
-  StringSelectMenuBuilder,
-  StringSelectMenuInteraction,
-  ModalSubmitInteraction,
-} from "discord.js";
+import { Client, ActionRowBuilder, StringSelectMenuBuilder } from "discord.js";
 import { Octokit } from "@octokit/rest";
-import { getModal } from "./utils";
+import { getModal, reloadCommands } from "./utils";
 import express from "express";
+import { commandMap } from "./slashCommands";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -137,10 +132,18 @@ client.on("interactionCreate", async (interaction) => {
     });
 
     await interaction.reply(`Issue created: ${result.data.html_url}`);
+  } else if (interaction.isChatInputCommand()) {
+    const commandName = interaction.commandName;
+    const command = commandMap[commandName];
+    if (command) {
+      await command.fn(interaction);
+    }
   }
 });
 
-client.login(process.env.BOT_TOKEN);
+client.login(process.env.BOT_TOKEN).then(async () => {
+  await reloadCommands();
+});
 
 app.post("/github-webhook", async (req, res) => {
   const event = req.headers["x-github-event"];
