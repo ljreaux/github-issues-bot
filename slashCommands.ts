@@ -27,11 +27,15 @@ export const commandMap: Record<string, Command> = {
         name: "og",
         description: "The original gravity of your brew.",
         required: true,
+        min_value: 0.98,
+        max_value: 1.2,
       },
       {
         type: ApplicationCommandOptionType.Number,
         name: "fg",
         description: "The final gravity of your brew.",
+        min_value: 0.98,
+        max_value: 1.2,
       },
     ],
     fn: async (int) => {
