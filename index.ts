@@ -3,6 +3,7 @@ import { Octokit } from "@octokit/rest";
 import { getModal, reloadCommands } from "./utils";
 import express from "express";
 import { commandMap } from "./slashCommands";
+import { yeastInfoAutocomplete } from "./commands/yeastInfo";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -52,6 +53,10 @@ client.on("ready", () => {
 });
 
 client.on("interactionCreate", async (interaction) => {
+  if (interaction.isAutocomplete() && interaction.commandName === "yeastinfo") {
+    return yeastInfoAutocomplete(interaction);
+  }
+
   if (interaction.isMessageContextMenuCommand()) {
     const { commandName, targetMessage } = interaction;
     const messageLink = `https://discord.com/channels/${interaction.guildId}/${targetMessage.channelId}/${targetMessage.id}`;

@@ -1,21 +1,12 @@
-import type {
-  ChatInputCommandInteraction,
-  PermissionResolvable,
-} from "discord.js";
+import type { ChatInputCommandInteraction } from "discord.js";
 import {
   ApplicationCommandOptionType,
-  type APIApplicationCommandOption,
   type RESTPostAPIChatInputApplicationCommandsJSONBody,
 } from "discord-api-types/v10";
 import { getAbv, toBrix } from "./utils";
 import { meadtoolsCommands } from "./meadtoolsCommands";
-
-export type Command = {
-  description: string;
-  options?: APIApplicationCommandOption[]; // optional slash options
-  requiredPermissions?: PermissionResolvable; // optional gate
-  fn: (interaction: ChatInputCommandInteraction) => Promise<void>;
-};
+import { Command } from "./types";
+import yeastinfo from "./commands/yeastInfo";
 
 export const commandMap: Record<string, Command> = {
   abv: {
@@ -122,6 +113,7 @@ export const commandMap: Record<string, Command> = {
       await safeReply(int, response);
     },
   },
+  yeastinfo,
   ...meadtoolsCommands,
 } as const;
 
