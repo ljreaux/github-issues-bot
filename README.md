@@ -26,3 +26,15 @@
 ## Hosting steps
 
 Host it on a server of your choice by running `yarn start`. I have hosted it on heroku with a free tier but it sleeps after inactivity of 30 minutes.
+
+## GitHub webhook notifications
+
+The `/github-webhook` endpoint verifies every request using
+`GITHUB_WEBHOOK_SECRET`. Generate a long random value, store it only in the
+bot's environment, and configure the same value as the GitHub webhook secret.
+
+For MeadTools translation-review notifications, configure the GitHub webhook
+for both **Issues** (for the existing close notification) and **Issue comments**.
+The bot sends one Discord mention whenever GitHub Actions adds a new Weblate
+translation-batch comment to the shared `translation-review` issue. This covers
+the first batch and every subsequent batch without duplicate notifications.
