@@ -5,6 +5,7 @@ import express from "express";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { commandMap } from "./slashCommands";
 import { yeastInfoAutocomplete } from "./commands/yeastInfo";
+import { releaseAnnouncement } from "./releaseNotes";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -43,8 +44,11 @@ const REPO_OPTIONS = [
 const TRANSLATION_REVIEW_LABEL = "translation-review";
 const GERMAN_CHANNEL_ID = "1383877767116095638";
 const RIZZEK_USER_ID = "189376145639211008";
+const RELEASE_NOTES_CHANNEL_ID =
+  process.env.RELEASE_NOTES_CHANNEL_ID || "1196106911540584458";
 const TRANSLATION_BATCH_MARKER = /<!-- translation-review:source-[a-f0-9]+:commit-[a-f0-9]+ -->/i;
 const deliveryCache = new Map<string, number>();
+const announcedReleaseIds = new Set<number>();
 const DELIVERY_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const contextCache = new Map<string, string>();
@@ -96,6 +100,17 @@ async function sendTranslationReviewNotification(issueUrl: string) {
   await channel.send(
     `<@${RIZZEK_USER_ID}> Translation review requested: ${issueUrl}`
   );
+}
+
+async function sendReleaseAnnouncement(messages: string[]) {
+  const channel = await client.channels.fetch(RELEASE_NOTES_CHANNEL_ID);
+  if (!channel?.isTextBased() || !("send" in channel)) {
+    throw new Error(`Discord channel ${RELEASE_NOTES_CHANNEL_ID} cannot receive messages.`);
+  }
+
+  for (const content of messages) {
+    await channel.send({ content, allowedMentions: { parse: [] } });
+  }
 }
 
 client.on("ready", () => {
@@ -234,6 +249,19 @@ app.post("/github-webhook", async (req, res) => {
   try {
     const event = req.get("x-github-event");
     const payload = req.body;
+
+    if (event === "release") {
+      const announcement = releaseAnnouncement(payload, GITHUB_WEBHOOK_REPOSITORY);
+      if (announcement && !announcedReleaseIds.has(announcement.id)) {
+        announcedReleaseIds.add(announcement.id);
+        try {
+          await sendReleaseAnnouncement(announcement.messages);
+        } catch (error) {
+          announcedReleaseIds.delete(announcement.id);
+          throw error;
+        }
+      }
+    }
 
     if (
       event === "issue_comment" &&

@@ -38,3 +38,11 @@ for both **Issues** (for the existing close notification) and **Issue comments**
 The bot sends one Discord mention whenever GitHub Actions adds a new Weblate
 translation-batch comment to the shared `translation-review` issue. This covers
 the first batch and every subsequent batch without duplicate notifications.
+
+To repost MeadTools release notes, also subscribe that webhook to **Releases**.
+When a non-draft, non-prerelease `release-YYYY-MM-DD` GitHub Release is published,
+the bot copies its notes and release link to the Discord announcements channel.
+`RELEASE_NOTES_CHANNEL_ID` overrides the default announcements channel ID.
+The bot needs permission to view and send messages in that channel. Release
+publishing happens after the production release is verified, so merging the
+release PR alone does not post an announcement.
